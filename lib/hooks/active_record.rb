@@ -3,30 +3,24 @@ class IncompleteDate
   module ActiveRecord::ClassMethods
 
     #
-    # Defines a new IncompleteDate virtual attribute with name +attr_name+
-    # corresponding to a real integer attribute named +raw_name+ that holds the
-    # raw date value in the database.
+    # Modifies the typecast so that it uses IncompleteDate instead of Date
     #
-    def incomplete_date_attr(attr_name, raw_name)
+    def incomplete_date_attr(attr_name)
       instance_var = "@#{attr_name}"
 
       # getter
       define_method "#{attr_name}" do
         value = instance_variable_get(instance_var)
-        value ||= IncompleteDate.new(read_attribute(raw_name))
+        value ||= IncompleteDate.parse(send("#{attr_name}_before_type_cast"))
         instance_variable_set(instance_var, value)
         value
       end
 
       # setter
       define_method "#{attr_name}=" do |value|
-        #begin
-          value = IncompleteDate.new(value)
-          instance_variable_set(instance_var, value)
-          write_attribute(raw_name, value.to_i)
-        #rescue ArgumentError
-        #  errors.add(raw_name)
-        #end
+        value_s = value.to_s
+        instance_variable_set(instance_var, value)
+        write_attribute(attr_name, value_s)
       end
     end
 
@@ -35,10 +29,8 @@ class IncompleteDate
     #
     def incomplete_date_attrs(*names)
       options = names.extract_options!
-      prefix = options.fetch(:prefix, 'raw')
       names.each do |name|
-        raw_name = "#{prefix}_#{name}"
-        incomplete_date_attr name, raw_name
+        incomplete_date_attr name
       end
     end
 

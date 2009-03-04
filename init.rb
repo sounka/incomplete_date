@@ -2,6 +2,7 @@ require 'incomplete_date'
 require 'hooks/date'
 require 'hooks/active_record'
 require 'hooks/form_builder'
+require 'hooks/attribute_methods'
 
 class ActiveRecord::Base
   extend IncompleteDate::ActiveRecord::ClassMethods

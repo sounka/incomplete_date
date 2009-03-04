@@ -21,6 +21,8 @@ class IncompleteDate
       @day, @month, @year, @circa = value.day, value.month, value.year, value.circa
     when nil #invaluable for existing databases!
     	@day, @month, @year, @circa = 0, 0, 0, false
+    when Array
+      @year, @month, @day = *(value.map {|v| v.to_i} )    
     else
       raise ArgumentError, "Invalid #{self.class.name} specification"
     end
@@ -256,7 +258,7 @@ class IncompleteDate
     (circa ? -1 : 1) * (d + m*100 + y*10000)
   end
 
-  def to_s
+  def to_h
     dt = to_date
     ord = has_day? ? dt.day.ordinalize : nil
     result = case defined_parts
@@ -288,5 +290,59 @@ class IncompleteDate
     VALID_DATE_PARTS.each { |part| result[part] = self.send(part) }
     result
   end
+  
+  ## try to parse assumes dates are in french format
+  def self.try_to_parse(string)
+    begin
+      array = string.split('/').map! {|v| v.to_i}
+      
+      ## guess the date format depending on the size of array
+      case array.size
+      when 3
+        hash = {:day => array[0], :month => array[1], :year => array[2]}
+      when 2
+        hash = {:day => nil, :month => array[0], :year => array[1]}
+      when 1
+        hash = {:day => nil, :month => nil, :year => array[0]}
+      end
+      
+      ## adds 2000 or 1900 when year has only 2 digits
+      year = hash[:year]
+      if year < 0
+        raise "year cannot be negative"
+      elsif 0 <= year && year <= 19
+        hash[:year] = year + 2000
+      elsif 20 <= year && year <= 99
+        hash[:year] = year + 1900
+      end
+      
+      IncompleteDate.new(hash)
+    rescue
+      return nil
+    end
+  end
 
+  ## used to convert value coming from the database. Eg : 1991-08-00
+  def self.parse(string)
+    string ||=""
+    new(string.split('-'))    
+  end
+  
+  ## needs to do the reverse of parse
+  def to_s
+    "#{@year||'00'}-#{@month||'00'}-#{@day||'00'}"   
+  end
+  
+  ## convert into french format string
+  def to_h_fr
+    array = []
+    for v in [@day,@month,@year]
+      if v
+        v = v.to_s
+        v = '0' + v if v.size == 1
+        array << v 
+      end
+    end
+    array.join('/')
+  end
 end
